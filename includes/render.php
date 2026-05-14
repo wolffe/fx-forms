@@ -25,8 +25,9 @@ function fxforms_shortcode(array|string $atts): string
 
     $config = fxforms_get_config($form_id);
     $status = fxforms_current_status($form_id);
+    $values = ($status === 'error') ? fxforms_get_stashed_values() : [];
 
-    return fxforms_render_form($form_id, $config, $status);
+    return fxforms_render_form($form_id, $config, $status, $values);
 }
 
 function fxforms_current_status(int $form_id): string
@@ -41,10 +42,20 @@ function fxforms_current_status(int $form_id): string
 function fxforms_current_url(): string
 {
     $req = (string) ($_SERVER['REQUEST_URI'] ?? '/');
-    return remove_query_arg(['fxforms_status', 'fxforms_form'], home_url($req));
+    return remove_query_arg(['fxforms_status', 'fxforms_form', 'fxforms_token'], home_url($req));
 }
 
-function fxforms_render_form(int $form_id, array $config, string $status): string
+function fxforms_get_stashed_values(): array
+{
+    $token = isset($_GET['fxforms_token']) ? sanitize_key((string) $_GET['fxforms_token']) : '';
+    if ($token === '') {
+        return [];
+    }
+    $values = get_transient('fxforms_stash_' . $token);
+    return is_array($values) ? $values : [];
+}
+
+function fxforms_render_form(int $form_id, array $config, string $status, array $values = []): string
 {
     ob_start();
     ?>
@@ -65,7 +76,7 @@ function fxforms_render_form(int $form_id, array $config, string $status): strin
         <?php endif; ?>
 
         <?php foreach ($config['fields'] as $field): ?>
-            <?php echo fxforms_render_field($form_id, $field); ?>
+            <?php echo fxforms_render_field($form_id, $field, $values); ?>
         <?php endforeach; ?>
 
         <p class="fxforms-actions">
@@ -76,7 +87,7 @@ function fxforms_render_form(int $form_id, array $config, string $status): strin
     return (string) ob_get_clean();
 }
 
-function fxforms_render_field(int $form_id, array $field): string
+function fxforms_render_field(int $form_id, array $field, array $values = []): string
 {
     $id       = 'fxforms_' . $form_id . '_' . $field['id'];
     $name     = $field['id'];
@@ -87,21 +98,23 @@ function fxforms_render_field(int $form_id, array $field): string
 
     $label = esc_html($field['label']);
     $type  = $field['type'];
+    $val   = $values[$field['id']] ?? null;
 
     ob_start();
     echo '<p class="fxforms-field fxforms-field-' . esc_attr($type) . ' fxforms-field-width-' . esc_attr($width) . '">';
 
     switch ($type) {
         case 'checkbox':
+            $checked = !empty($val) ? ' checked' : '';
             echo '<label for="' . esc_attr($id) . '" class="fxforms-checkbox-label">';
-            echo '<input type="checkbox" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="1"' . $req_attr . '>';
+            echo '<input type="checkbox" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="1"' . $req_attr . $checked . '>';
             echo '<span>' . $label . $req_mark . '</span>';
             echo '</label>';
             break;
 
         case 'textarea':
             echo '<label for="' . esc_attr($id) . '">' . $label . $req_mark . '</label>';
-            echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="5"' . $req_attr . '></textarea>';
+            echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="5"' . $req_attr . '>' . esc_textarea(is_string($val) ? $val : '') . '</textarea>';
             break;
 
         case 'select':
@@ -109,7 +122,8 @@ function fxforms_render_field(int $form_id, array $field): string
             echo '<select id="' . esc_attr($id) . '" name="' . esc_attr($name) . '"' . $req_attr . '>';
             echo '<option value="">' . esc_html__('— Select —', 'fx-forms') . '</option>';
             foreach ($field['options'] as $opt) {
-                echo '<option value="' . esc_attr($opt) . '">' . esc_html($opt) . '</option>';
+                $selected = (is_string($val) && $val === $opt) ? ' selected' : '';
+                echo '<option value="' . esc_attr($opt) . '"' . $selected . '>' . esc_html($opt) . '</option>';
             }
             echo '</select>';
             break;
@@ -118,9 +132,10 @@ function fxforms_render_field(int $form_id, array $field): string
             echo '<span class="fxforms-field-label">' . $label . $req_mark . '</span>';
             echo '<span class="fxforms-subfields">';
             foreach (['first' => __('First', 'fx-forms'), 'last' => __('Last', 'fx-forms')] as $part => $sublabel) {
-                $sub_id = $id . '_' . $part;
+                $sub_id  = $id . '_' . $part;
+                $sub_val = is_array($val) ? esc_attr((string) ($val[$part] ?? '')) : '';
                 echo '<span class="fxforms-subfield">';
-                echo '<input type="text" id="' . esc_attr($sub_id) . '" name="' . esc_attr($name . '_' . $part) . '"' . $req_attr . '>';
+                echo '<input type="text" id="' . esc_attr($sub_id) . '" name="' . esc_attr($name . '_' . $part) . '" value="' . $sub_val . '"' . $req_attr . '>';
                 echo '<small><label for="' . esc_attr($sub_id) . '">' . esc_html($sublabel) . '</label></small>';
                 echo '</span>';
             }
@@ -129,8 +144,9 @@ function fxforms_render_field(int $form_id, array $field): string
 
         default:
             $input_type = in_array($type, ['text', 'email', 'tel', 'number', 'url', 'date', 'time'], true) ? $type : 'text';
+            $input_val  = is_string($val) ? esc_attr($val) : '';
             echo '<label for="' . esc_attr($id) . '">' . $label . $req_mark . '</label>';
-            echo '<input type="' . esc_attr($input_type) . '" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '"' . $req_attr . '>';
+            echo '<input type="' . esc_attr($input_type) . '" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="' . $input_val . '"' . $req_attr . '>';
             break;
     }
 

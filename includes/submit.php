@@ -35,7 +35,8 @@ function fxforms_handle_submit(): void
     $values = fxforms_collect_values($config['fields'], $_POST);
 
     if (fxforms_missing_required($config['fields'], $values)) {
-        fxforms_redirect($redirect, 'error', $form_id);
+        $token = fxforms_stash_values($values);
+        fxforms_redirect($redirect, 'error', $form_id, $token);
     }
 
     $ok = fxforms_send_mail($form_id, $config, $values);
@@ -204,12 +205,23 @@ function fxforms_first_email_value(array $fields, array $values): ?string
     return null;
 }
 
-function fxforms_redirect(string $redirect, string $status, int $form_id): never
+function fxforms_stash_values(array $values): string
 {
-    $url = add_query_arg([
+    $token = wp_generate_uuid4();
+    set_transient('fxforms_stash_' . $token, $values, 5 * MINUTE_IN_SECONDS);
+    return $token;
+}
+
+function fxforms_redirect(string $redirect, string $status, int $form_id, string $token = ''): never
+{
+    $args = [
         'fxforms_status' => $status,
         'fxforms_form'   => $form_id,
-    ], $redirect);
+    ];
+    if ($token !== '') {
+        $args['fxforms_token'] = $token;
+    }
+    $url = add_query_arg($args, $redirect);
 
     if ($form_id) {
         $url .= '#fxforms-form-' . $form_id;
