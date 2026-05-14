@@ -1,0 +1,131 @@
+/* FX Forms — admin styles */
+
+.fxforms-shortcode-bar {
+    background: #f0f0f1;
+    border-left: 4px solid #2271b1;
+    padding: 10px 14px;
+    margin: 14px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.fxforms-shortcode-value {
+    background: #fff;
+    padding: 4px 8px;
+    border: 1px solid #ccd0d4;
+    font-size: 14px;
+    user-select: all;
+}
+
+.fxforms-shortcode-feedback {
+    font-size: 12px;
+}
+
+.fxforms-builder h3 {
+    margin: 1.6em 0 0.6em;
+}
+
+.fxforms-builder-fields {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    border: 1px solid #ccd0d4;
+    background: #fff;
+    border-radius: 4px;
+}
+
+.fxforms-builder-field {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.fxforms-builder-field:last-child {
+    border-bottom: 0;
+}
+
+.fxforms-builder-field-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.fxforms-builder-field-extra {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    margin-left: 28px;
+}
+
+.fxforms-builder-field-extra > * {
+    flex: 1 1 0;
+}
+
+.fxforms-builder-field-desc {
+    width: 100%;
+}
+
+.fxforms-builder-field-handle {
+    cursor: move;
+    color: #8c8f94;
+    flex: 0 0 auto;
+}
+
+.fxforms-builder-field-label {
+    flex: 1;
+    min-width: 140px;
+}
+
+.fxforms-builder-field-type {
+    width: 130px;
+    flex: 0 0 130px;
+}
+
+.fxforms-builder-field-width {
+    width: 110px;
+    flex: 0 0 110px;
+}
+
+.fxforms-builder-field-options-wrap {
+    flex: 1;
+    min-width: 180px;
+}
+
+.fxforms-builder-field-options {
+    width: 100%;
+}
+
+.fxforms-builder-field-required {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #50575e;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.fxforms-builder-field-id {
+    color: #8c8f94;
+    font-size: 11px;
+    background: #f6f7f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.fxforms-builder-field-delete {
+    color: #b32d2e;
+    font-size: 22px;
+    line-height: 1;
+    text-decoration: none;
+    flex: 0 0 auto;
+}
+
+.fxforms-builder-field-delete:hover {
+    color: #d63638;
+}
+
+.fxforms-builder-field-ghost {
+    opacity: 0.4;
+}
