@@ -1,5 +1,5 @@
 === FX Forms ===
-Contributors: rbplugins
+Contributors: butterflymedia
 Tags: forms, contact form, classicpress
 Requires at least: 5.3
 Tested up to: 6.8
