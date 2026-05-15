@@ -44,10 +44,17 @@ function fxforms_get_config(int $form_id): array
     if (!is_array($stored)) {
         return fxforms_default_config();
     }
-    $merged = array_replace(fxforms_default_config(), $stored);
+    $defaults = fxforms_default_config();
+    $merged   = array_replace($defaults, $stored);
     if (!isset($merged['fields']) || !is_array($merged['fields']) || !$merged['fields']) {
-        $merged['fields'] = fxforms_default_config()['fields'];
+        $merged['fields'] = $defaults['fields'];
     }
+
+    // Migrate forms saved with the old incomplete default subject (missing the token).
+    if (($merged['mail_subject'] ?? '') === 'New submission on ') {
+        $merged['mail_subject'] = $defaults['mail_subject'];
+    }
+
     return $merged;
 }
 
