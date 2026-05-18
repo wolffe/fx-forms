@@ -79,6 +79,10 @@ function fxforms_render_form(int $form_id, array $config, string $status, array 
             <?php echo fxforms_render_field($form_id, $field, $values); ?>
         <?php endforeach; ?>
 
+        <?php if (!empty($config['captcha'])): ?>
+            <?php echo fxforms_render_captcha_field($form_id); ?>
+        <?php endif; ?>
+
         <p class="fxforms-actions">
             <button type="submit" class="fxforms-submit"><?php echo esc_html($config['submit_label']); ?></button>
         </p>

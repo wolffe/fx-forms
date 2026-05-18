@@ -4,7 +4,7 @@ Tags: forms, contact form, classicpress
 Requires at least: 5.3
 Tested up to: 6.8
 Requires PHP: 8.1
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -57,6 +57,12 @@ If your form has a field of type "Email" and the visitor fills it in, that addre
 `{form_title}`, `{form_id}`, `{data}` (all fields), and any individual field id like `{email}` or `{message}`. For "Full Name" fields, `{your_name}` produces "First Last", and `{your_name_first}` / `{your_name_last}` work too.
 
 == Changelog ==
+
+= 2.1.0 =
+* New: Global Settings page (FX Forms → Settings) — choose the sending method and configure the email log.
+* New: SMTP2Go mailer — enter your API key and select SMTP2Go as the mailer to send via the SMTP2Go REST API instead of wp_mail. More mailer options can be added later.
+* New: Email log — optionally store a copy of every sent email in a dedicated database table; configurable maximum entry count (default 1000); entries are pruned automatically; viewable and clearable from FX Forms → Email Log.
+* New: Per-form CAPTCHA — enable a text verification code on any form to deter spam; stateless (no PHP sessions), challenge stored in a short-lived transient.
 
 = 2.0.0 =
 * Initial release as FX Forms.

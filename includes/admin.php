@@ -35,6 +35,7 @@ function fxforms_default_config(): array
         'mail_to'         => '',
         'mail_subject'    => 'New submission on {form_title}',
         'mail_body'       => "A new submission has arrived:\n\n{data}",
+        'captcha'         => false,
     ];
 }
 
@@ -141,6 +142,20 @@ function fxforms_render_metabox(WP_Post $post): void
                 </td>
             </tr>
         </table>
+
+        <h3><?php esc_html_e('CAPTCHA', 'fx-forms'); ?></h3>
+        <table class="form-table" role="presentation">
+            <tr>
+                <th scope="row"><?php esc_html_e('Enable CAPTCHA', 'fx-forms'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="fxforms_captcha" value="1" <?php checked(!empty($config['captcha'])); ?>>
+                        <?php esc_html_e('Add a text verification code to this form', 'fx-forms'); ?>
+                    </label>
+                    <p class="description"><?php esc_html_e('Visitors must type a 6-character code before they can submit.', 'fx-forms'); ?></p>
+                </td>
+            </tr>
+        </table>
     </div>
     <?php
 }
@@ -209,6 +224,8 @@ function fxforms_save_post(int $post_id): void
     if (isset($_POST['fxforms_mail_body'])) {
         $config['mail_body'] = sanitize_textarea_field((string) wp_unslash($_POST['fxforms_mail_body']));
     }
+
+    $config['captcha'] = !empty($_POST['fxforms_captcha']);
 
     update_post_meta($post_id, FXFORMS_META, $config);
 }

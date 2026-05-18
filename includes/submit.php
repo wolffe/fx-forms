@@ -34,6 +34,21 @@ function fxforms_handle_submit(): void
     $config = fxforms_get_config($form_id);
     $values = fxforms_collect_values($config['fields'], $_POST);
 
+    // Verify CAPTCHA before checking required fields so the stashed values
+    // are already collected and can pre-fill the form on re-render.
+    if (!empty($config['captcha'])) {
+        $cap_token = isset($_POST['fxforms_captcha_token'])
+            ? sanitize_key((string) $_POST['fxforms_captcha_token'])
+            : '';
+        $cap_input = isset($_POST['fxforms_captcha'])
+            ? sanitize_text_field((string) wp_unslash($_POST['fxforms_captcha']))
+            : '';
+        if (!fxforms_verify_captcha($cap_token, $cap_input)) {
+            $token = fxforms_stash_values($values);
+            fxforms_redirect($redirect, 'error', $form_id, $token);
+        }
+    }
+
     if (fxforms_missing_required($config['fields'], $values)) {
         $token = fxforms_stash_values($values);
         fxforms_redirect($redirect, 'error', $form_id, $token);
@@ -147,7 +162,11 @@ function fxforms_send_mail(int $form_id, array $config, array $values): bool
         $headers[] = 'Reply-To: ' . $reply;
     }
 
-    return (bool) wp_mail($recipients, $subject, $body, $headers);
+    $ok = fxforms_dispatch_mail($recipients, $subject, $body, $headers);
+
+    fxforms_log_email($form_id, $form_title, $recipients, $subject, $body, $ok);
+
+    return $ok;
 }
 
 /**
