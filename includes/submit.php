@@ -7,8 +7,10 @@ if (!defined('ABSPATH')) {
 
 function fxforms_handle_submit(): void
 {
-    $form_id  = isset($_POST['form_id']) ? (int) $_POST['form_id'] : 0;
+    // phpcs:disable WordPress.Security.NonceVerification -- Form id selects the nonce action; both values are sanitized before the nonce check below.
+    $form_id  = isset($_POST['form_id']) ? absint(wp_unslash($_POST['form_id'])) : 0;
     $redirect = isset($_POST['redirect_to']) ? esc_url_raw((string) wp_unslash($_POST['redirect_to'])) : home_url('/');
+    // phpcs:enable WordPress.Security.NonceVerification
 
     if (!$form_id) {
         fxforms_redirect($redirect, 'error', 0);
@@ -32,13 +34,14 @@ function fxforms_handle_submit(): void
     }
 
     $config = fxforms_get_config($form_id);
-    $values = fxforms_collect_values($config['fields'], $_POST);
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each field is sanitized in fxforms_collect_values().
+    $values = fxforms_collect_values($config['fields'], wp_unslash($_POST));
 
     // Verify CAPTCHA before checking required fields so the stashed values
     // are already collected and can pre-fill the form on re-render.
     if (!empty($config['captcha'])) {
         $cap_token = isset($_POST['fxforms_captcha_token'])
-            ? sanitize_key((string) $_POST['fxforms_captcha_token'])
+            ? sanitize_key((string) wp_unslash($_POST['fxforms_captcha_token']))
             : '';
         $cap_input = isset($_POST['fxforms_captcha'])
             ? sanitize_text_field((string) wp_unslash($_POST['fxforms_captcha']))
@@ -80,15 +83,30 @@ function fxforms_collect_values(array $fields, array $post): array
         $raw = $post[$name] ?? '';
         $raw = is_array($raw) ? '' : wp_unslash((string) $raw);
 
-        $values[$name] = match ($field['type']) {
-            'textarea' => sanitize_textarea_field((string) $raw),
-            'email'    => sanitize_email((string) $raw),
-            'url'      => esc_url_raw((string) $raw),
-            'number'   => preg_replace('/[^\d.\-+e]/i', '', (string) $raw) ?? '',
-            'checkbox' => !empty($raw),
-            'select'   => fxforms_clamp_option((string) $raw, $field['options']),
-            default    => sanitize_text_field((string) $raw),
-        };
+        switch ($field['type']) {
+            case 'textarea':
+                $values[$name] = sanitize_textarea_field((string) $raw);
+                break;
+            case 'email':
+                $values[$name] = sanitize_email((string) $raw);
+                break;
+            case 'url':
+                $values[$name] = esc_url_raw((string) $raw);
+                break;
+            case 'number':
+                $replaced      = preg_replace('/[^\d.\-+e]/i', '', (string) $raw);
+                $values[$name] = is_string($replaced) ? $replaced : '';
+                break;
+            case 'checkbox':
+                $values[$name] = !empty($raw);
+                break;
+            case 'select':
+                $values[$name] = fxforms_clamp_option((string) $raw, $field['options']);
+                break;
+            default:
+                $values[$name] = sanitize_text_field((string) $raw);
+                break;
+        }
     }
     return $values;
 }
@@ -108,11 +126,17 @@ function fxforms_missing_required(array $fields, array $values): bool
         if (empty($field['required'])) continue;
         $val = $values[$field['id']] ?? null;
 
-        $missing = match ($field['type']) {
-            'checkbox'  => !$val,
-            'full_name' => !is_array($val) || empty($val['first']) || empty($val['last']),
-            default     => !is_string($val) || $val === '',
-        };
+        switch ($field['type']) {
+            case 'checkbox':
+                $missing = !$val;
+                break;
+            case 'full_name':
+                $missing = !is_array($val) || empty($val['first']) || empty($val['last']);
+                break;
+            default:
+                $missing = !is_string($val) || $val === '';
+                break;
+        }
 
         if ($missing) return true;
     }
@@ -200,11 +224,13 @@ function fxforms_format_data(array $fields, array $values): string
     foreach ($fields as $field) {
         $val = $values[$field['id']] ?? '';
 
-        $display = match (true) {
-            $field['type'] === 'checkbox' => $val ? __('Yes', 'fx-forms') : __('No', 'fx-forms'),
-            $field['type'] === 'full_name' && is_array($val) => trim(($val['first'] ?? '') . ' ' . ($val['last'] ?? '')),
-            default => (string) $val,
-        };
+        if ($field['type'] === 'checkbox') {
+            $display = $val ? __('Yes', 'fx-forms') : __('No', 'fx-forms');
+        } elseif ($field['type'] === 'full_name' && is_array($val)) {
+            $display = trim(($val['first'] ?? '') . ' ' . ($val['last'] ?? ''));
+        } else {
+            $display = (string) $val;
+        }
 
         $lines[] = '<p><strong>' . esc_html((string) $field['label']) . ':</strong> '
             . nl2br(esc_html($display)) . '</p>';
@@ -231,7 +257,7 @@ function fxforms_stash_values(array $values): string
     return $token;
 }
 
-function fxforms_redirect(string $redirect, string $status, int $form_id, string $token = ''): never
+function fxforms_redirect(string $redirect, string $status, int $form_id, string $token = ''): void
 {
     $args = [
         'fxforms_status' => $status,

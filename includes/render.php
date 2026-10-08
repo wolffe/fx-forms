@@ -5,7 +5,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-function fxforms_shortcode(array|string $atts): string
+function fxforms_shortcode($atts): string
 {
     $atts = is_array($atts) ? $atts : [];
     $form_id = isset($atts['id']) ? (int) $atts['id'] : 0;
@@ -32,22 +32,27 @@ function fxforms_shortcode(array|string $atts): string
 
 function fxforms_current_status(int $form_id): string
 {
-    if (!isset($_GET['fxforms_form']) || (int) $_GET['fxforms_form'] !== $form_id) {
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Redirect query args after a nonce-checked submit; they only select the notice.
+    if (!isset($_GET['fxforms_form']) || absint(wp_unslash($_GET['fxforms_form'])) !== $form_id) {
         return '';
     }
-    $status = isset($_GET['fxforms_status']) ? sanitize_key((string) $_GET['fxforms_status']) : '';
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Redirect query args after a nonce-checked submit; they only select the notice.
+    $status = isset($_GET['fxforms_status']) ? sanitize_key((string) wp_unslash($_GET['fxforms_status'])) : '';
     return in_array($status, ['success', 'error'], true) ? $status : '';
 }
 
 function fxforms_current_url(): string
 {
-    $req = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+    $req = isset($_SERVER['REQUEST_URI'])
+        ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI']))
+        : '/';
     return remove_query_arg(['fxforms_status', 'fxforms_form', 'fxforms_token'], home_url($req));
 }
 
 function fxforms_get_stashed_values(): array
 {
-    $token = isset($_GET['fxforms_token']) ? sanitize_key((string) $_GET['fxforms_token']) : '';
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Redirect query args after a nonce-checked submit; they only refill the form.
+    $token = isset($_GET['fxforms_token']) ? sanitize_key((string) wp_unslash($_GET['fxforms_token'])) : '';
     if ($token === '') {
         return [];
     }
@@ -76,11 +81,17 @@ function fxforms_render_form(int $form_id, array $config, string $status, array 
         <?php endif; ?>
 
         <?php foreach ($config['fields'] as $field): ?>
-            <?php echo fxforms_render_field($form_id, $field, $values); ?>
+            <?php
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup is escaped inside fxforms_render_field().
+            echo fxforms_render_field($form_id, $field, $values);
+            ?>
         <?php endforeach; ?>
 
         <?php if (!empty($config['captcha'])): ?>
-            <?php echo fxforms_render_captcha_field($form_id); ?>
+            <?php
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Markup is escaped inside fxforms_render_captcha_field().
+            echo fxforms_render_captcha_field($form_id);
+            ?>
         <?php endif; ?>
 
         <p class="fxforms-actions">
@@ -96,50 +107,45 @@ function fxforms_render_field(int $form_id, array $field, array $values = []): s
     $id       = 'fxforms_' . $form_id . '_' . $field['id'];
     $name     = $field['id'];
     $required = !empty($field['required']);
-    $req_attr = $required ? ' required' : '';
     $req_mark = $required ? ' <span class="fxforms-required" aria-hidden="true">*</span>' : '';
     $width    = ($field['width'] ?? 'full') === 'half' ? 'half' : 'full';
 
-    $label = esc_html($field['label']);
-    $type  = $field['type'];
-    $val   = $values[$field['id']] ?? null;
+    $type = $field['type'];
+    $val  = $values[$field['id']] ?? null;
 
     ob_start();
     echo '<p class="fxforms-field fxforms-field-' . esc_attr($type) . ' fxforms-field-width-' . esc_attr($width) . '">';
 
     switch ($type) {
         case 'checkbox':
-            $checked = !empty($val) ? ' checked' : '';
             echo '<label for="' . esc_attr($id) . '" class="fxforms-checkbox-label">';
-            echo '<input type="checkbox" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="1"' . $req_attr . $checked . '>';
-            echo '<span>' . $label . $req_mark . '</span>';
+            echo '<input type="checkbox" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="1"' . ($required ? ' required' : '') . (!empty($val) ? ' checked' : '') . '>';
+            echo '<span>' . esc_html((string) $field['label']) . wp_kses_post($req_mark) . '</span>';
             echo '</label>';
             break;
 
         case 'textarea':
-            echo '<label for="' . esc_attr($id) . '">' . $label . $req_mark . '</label>';
-            echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="5"' . $req_attr . '>' . esc_textarea(is_string($val) ? $val : '') . '</textarea>';
+            echo '<label for="' . esc_attr($id) . '">' . esc_html((string) $field['label']) . wp_kses_post($req_mark) . '</label>';
+            echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="5"' . ($required ? ' required' : '') . '>' . esc_textarea(is_string($val) ? $val : '') . '</textarea>';
             break;
 
         case 'select':
-            echo '<label for="' . esc_attr($id) . '">' . $label . $req_mark . '</label>';
-            echo '<select id="' . esc_attr($id) . '" name="' . esc_attr($name) . '"' . $req_attr . '>';
+            echo '<label for="' . esc_attr($id) . '">' . esc_html((string) $field['label']) . wp_kses_post($req_mark) . '</label>';
+            echo '<select id="' . esc_attr($id) . '" name="' . esc_attr($name) . '"' . ($required ? ' required' : '') . '>';
             echo '<option value="">' . esc_html__('— Select —', 'fx-forms') . '</option>';
             foreach ($field['options'] as $opt) {
-                $selected = (is_string($val) && $val === $opt) ? ' selected' : '';
-                echo '<option value="' . esc_attr($opt) . '"' . $selected . '>' . esc_html($opt) . '</option>';
+                echo '<option value="' . esc_attr($opt) . '"' . ((is_string($val) && $val === $opt) ? ' selected' : '') . '>' . esc_html($opt) . '</option>';
             }
             echo '</select>';
             break;
 
         case 'full_name':
-            echo '<span class="fxforms-field-label">' . $label . $req_mark . '</span>';
+            echo '<span class="fxforms-field-label">' . esc_html((string) $field['label']) . wp_kses_post($req_mark) . '</span>';
             echo '<span class="fxforms-subfields">';
             foreach (['first' => __('First', 'fx-forms'), 'last' => __('Last', 'fx-forms')] as $part => $sublabel) {
-                $sub_id  = $id . '_' . $part;
-                $sub_val = is_array($val) ? esc_attr((string) ($val[$part] ?? '')) : '';
+                $sub_id = $id . '_' . $part;
                 echo '<span class="fxforms-subfield">';
-                echo '<input type="text" id="' . esc_attr($sub_id) . '" name="' . esc_attr($name . '_' . $part) . '" value="' . $sub_val . '"' . $req_attr . '>';
+                echo '<input type="text" id="' . esc_attr($sub_id) . '" name="' . esc_attr($name . '_' . $part) . '" value="' . esc_attr(is_array($val) ? (string) ($val[$part] ?? '') : '') . '"' . ($required ? ' required' : '') . '>';
                 echo '<small><label for="' . esc_attr($sub_id) . '">' . esc_html($sublabel) . '</label></small>';
                 echo '</span>';
             }
@@ -148,9 +154,8 @@ function fxforms_render_field(int $form_id, array $field, array $values = []): s
 
         default:
             $input_type = in_array($type, ['text', 'email', 'tel', 'number', 'url', 'date', 'time'], true) ? $type : 'text';
-            $input_val  = is_string($val) ? esc_attr($val) : '';
-            echo '<label for="' . esc_attr($id) . '">' . $label . $req_mark . '</label>';
-            echo '<input type="' . esc_attr($input_type) . '" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="' . $input_val . '"' . $req_attr . '>';
+            echo '<label for="' . esc_attr($id) . '">' . esc_html((string) $field['label']) . wp_kses_post($req_mark) . '</label>';
+            echo '<input type="' . esc_attr($input_type) . '" id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" value="' . esc_attr(is_string($val) ? $val : '') . '"' . ($required ? ' required' : '') . '>';
             break;
     }
 

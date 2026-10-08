@@ -196,7 +196,7 @@ function fxforms_save_post(int $post_id): void
     $config = fxforms_default_config();
 
     if (isset($_POST['fxforms_fields'])) {
-        $raw = (string) wp_unslash($_POST['fxforms_fields']);
+        $raw = sanitize_textarea_field((string) wp_unslash($_POST['fxforms_fields']));
         $decoded = json_decode($raw, true);
         if (is_array($decoded)) {
             $config['fields'] = fxforms_sanitize_fields($decoded);
@@ -216,7 +216,7 @@ function fxforms_save_post(int $post_id): void
         $config['error_message'] = sanitize_text_field((string) wp_unslash($_POST['fxforms_error_message']));
     }
     if (isset($_POST['fxforms_mail_to'])) {
-        $config['mail_to'] = fxforms_sanitize_recipient_list((string) wp_unslash($_POST['fxforms_mail_to']));
+        $config['mail_to'] = fxforms_sanitize_recipient_list(sanitize_text_field((string) wp_unslash($_POST['fxforms_mail_to'])));
     }
     if (isset($_POST['fxforms_mail_subject'])) {
         $config['mail_subject'] = sanitize_text_field((string) wp_unslash($_POST['fxforms_mail_subject']));
@@ -292,7 +292,7 @@ function fxforms_unique_field_id(string $label, array $existing): string
     $id = $base;
     $i  = 2;
     while (isset($existing[$id])) {
-        $id = $base . '_' . $i++;
+        $id = $base . '_' . ($i++);
     }
     return $id;
 }

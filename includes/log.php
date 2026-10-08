@@ -90,16 +90,17 @@ function fxforms_prune_log(): void
 {
     global $wpdb;
 
-    $table = fxforms_log_table();
+    $table = esc_sql(fxforms_log_table());
     $max   = max(1, (int) get_option('fxforms_log_max', 1000));
-    $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table");
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix, escaped with esc_sql().
+    $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
 
     if ($count <= $max) {
         return;
     }
 
     $wpdb->query($wpdb->prepare(
-        "DELETE FROM $table ORDER BY sent_at ASC, id ASC LIMIT %d",
+        "DELETE FROM `{$table}` ORDER BY sent_at ASC, id ASC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix, escaped with esc_sql().
         $count - $max
     ));
 }
@@ -120,8 +121,9 @@ function fxforms_render_log_page(): void
         && wp_verify_nonce(sanitize_key((string) $_POST['fxforms_log_nonce']), 'fxforms_clear_log')
     ) {
         global $wpdb;
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $wpdb->query('TRUNCATE TABLE ' . fxforms_log_table());
+        $table = esc_sql(fxforms_log_table());
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix, escaped with esc_sql().
+        $wpdb->query("TRUNCATE TABLE `{$table}`");
         echo '<div class="notice notice-success is-dismissible"><p>'
             . esc_html__('Email log cleared.', 'fx-forms')
             . '</p></div>';
@@ -129,13 +131,15 @@ function fxforms_render_log_page(): void
 
     global $wpdb;
 
-    $table    = fxforms_log_table();
+    $table    = esc_sql(fxforms_log_table());
     $per_page = 50;
-    $page     = max(1, (int) ($_GET['paged'] ?? 1));
-    $offset   = ($page - 1) * $per_page;
-    $total    = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table");
-    $rows     = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table ORDER BY sent_at DESC, id DESC LIMIT %d OFFSET %d",
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only admin pagination.
+    $page   = isset($_GET['paged']) ? max(1, absint(wp_unslash($_GET['paged']))) : 1;
+    $offset = ($page - 1) * $per_page;
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix, escaped with esc_sql().
+    $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
+    $rows  = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM `{$table}` ORDER BY sent_at DESC, id DESC LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix, escaped with esc_sql().
         $per_page,
         $offset
     ));
@@ -152,12 +156,14 @@ function fxforms_render_log_page(): void
                        value="<?php esc_attr_e('Clear log', 'fx-forms'); ?>"
                        onclick="return confirm('<?php esc_attr_e('Delete all log entries? This cannot be undone.', 'fx-forms'); ?>')">
                 <span style="margin-left:1em;color:#666;">
-                    <?php printf(
+                    <?php
+                    echo esc_html(sprintf(
                         /* translators: 1: current entry count, 2: configured maximum */
-                        esc_html__('%1$d entries (max %2$d)', 'fx-forms'),
+                        __('%1$d entries (max %2$d)', 'fx-forms'),
                         $total,
                         max(1, (int) get_option('fxforms_log_max', 1000))
-                    ); ?>
+                    ));
+                    ?>
                 </span>
             </form>
 
@@ -213,12 +219,15 @@ function fxforms_render_log_page(): void
                 <div class="tablenav bottom" style="margin-top:.5em;">
                     <div class="tablenav-pages">
                         <?php
-                        echo paginate_links([
+                        $pagination = paginate_links([
                             'base'    => add_query_arg('paged', '%#%'),
                             'format'  => '',
                             'current' => $page,
                             'total'   => (int) ceil($total / $per_page),
                         ]);
+                        if (is_string($pagination)) {
+                            echo wp_kses_post($pagination);
+                        }
                         ?>
                     </div>
                 </div>

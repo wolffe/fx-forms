@@ -98,9 +98,10 @@ function fxforms_render_settings_page(): void
         isset($_POST['fxforms_settings_nonce'])
         && wp_verify_nonce(sanitize_key((string) $_POST['fxforms_settings_nonce']), 'fxforms_save_settings')
     ) {
-        $mailer = (isset($_POST['fxforms_mailer']) && array_key_exists((string) $_POST['fxforms_mailer'], FXFORMS_MAILERS))
-            ? sanitize_key((string) $_POST['fxforms_mailer'])
-            : 'default';
+        $mailer_raw = isset($_POST['fxforms_mailer'])
+            ? sanitize_key(wp_unslash($_POST['fxforms_mailer']))
+            : '';
+        $mailer = array_key_exists($mailer_raw, FXFORMS_MAILERS) ? $mailer_raw : 'default';
         update_option('fxforms_mailer', $mailer);
 
         $api_key = isset($_POST['fxforms_smtp2go_key'])
@@ -111,7 +112,7 @@ function fxforms_render_settings_page(): void
         $log_enabled = !empty($_POST['fxforms_log_enabled']) ? '1' : '';
         update_option('fxforms_log_enabled', $log_enabled);
 
-        $log_max = isset($_POST['fxforms_log_max']) ? max(1, (int) $_POST['fxforms_log_max']) : 1000;
+        $log_max = isset($_POST['fxforms_log_max']) ? max(1, absint(wp_unslash($_POST['fxforms_log_max']))) : 1000;
         update_option('fxforms_log_max', $log_max);
 
         echo '<div class="notice notice-success is-dismissible"><p>'
@@ -127,7 +128,7 @@ function fxforms_render_settings_page(): void
     <div class="wrap">
         <h1><?php esc_html_e('FX Forms — Settings', 'fx-forms'); ?></h1>
 
-        <?php echo $test_notice; ?>
+        <?php echo wp_kses_post($test_notice); ?>
 
         <form method="post">
             <?php wp_nonce_field('fxforms_save_settings', 'fxforms_settings_nonce'); ?>
