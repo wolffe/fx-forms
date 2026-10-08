@@ -3,9 +3,10 @@ Contributors: butterflymedia
 Donate link: https://buymeacoffee.com/wolffe
 Tags: forms, contact form, classicpress
 Requires at least: 5.3
-Tested up to: 2.7.2
+Requires CP: 2.5
+Tested up to: 2.7.3
 Requires PHP: 8.1
-Stable tag: 2.1.1
+Stable tag: 2.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +61,9 @@ If your form has a field of type "Email" and the visitor fills it in, that addre
 `{form_title}`, `{form_id}`, `{data}` (all fields), and any individual field id like `{email}` or `{message}`. For "Full Name" fields, `{your_name}` produces "First Last", and `{your_name_first}` / `{your_name_last}` work too.
 
 == Changelog ==
+
+= 2.1.2 =
+* Confirm compatibility with ClassicPress 2.7.3.
 
 = 2.1.1 =
 * Confirm compatibility with ClassicPress 2.7.2.

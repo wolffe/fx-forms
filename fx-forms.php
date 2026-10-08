@@ -2,9 +2,10 @@
 /**
  * Plugin Name:       FX Forms
  * Description:       Simple contact-form plugin for ClassicPress. Define forms, drop them via [fxform id=N], get an email when someone submits.
- * Version:           2.1.1
+ * Version:           2.1.2
  * Requires at least: 5.3
  * Requires PHP:      8.1
+ * Requires CP:       2.5
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       fx-forms
@@ -18,7 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-const FXFORMS_VERSION    = '2.1.1';
+const FXFORMS_VERSION    = '2.1.2';
 const FXFORMS_DB_VERSION = '1';
 const FXFORMS_CPT     = 'fxform';
 const FXFORMS_META    = '_fxforms_config';
